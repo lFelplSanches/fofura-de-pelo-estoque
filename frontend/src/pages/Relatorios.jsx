@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../config'; // ✅ Importação da URL base da API
 
 function Relatorios() {
   const [movimentacoes, setMovimentacoes] = useState([]);
@@ -15,7 +16,7 @@ function Relatorios() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/movimentacoes', {
+      const response = await fetch(`${API_BASE_URL}/api/movimentacoes`, { // ✅ Atualização da URL
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -28,7 +29,7 @@ function Relatorios() {
 
       const data = await response.json();
 
-      const produtosResponse = await fetch('http://localhost:5000/api/products', {
+      const produtosResponse = await fetch(`${API_BASE_URL}/api/products`, { // ✅ Atualização da URL
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -63,7 +64,7 @@ function Relatorios() {
         return;
       }
 
-      await fetch(`http://localhost:5000/api/movimentacoes/${id}`, {
+      await fetch(`${API_BASE_URL}/api/movimentacoes/${id}`, { // ✅ Atualização da URL
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

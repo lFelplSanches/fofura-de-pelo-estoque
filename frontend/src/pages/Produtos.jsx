@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../config';
 
 function Produtos() {
   const [produtos, setProdutos] = useState([]);
@@ -20,14 +21,14 @@ function Produtos() {
 
   const fetchProdutos = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/products', {
+      const response = await fetch(`${API_BASE_URL}/api/products`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`  // ✅ Inclui o token JWT
         }
       });
       const data = await response.json();
       console.log('Dados recebidos:', data); // ✅ Verificar o retorno da API
-  
+
       if (Array.isArray(data)) {
         setProdutos(data); // ✅ Se for um array, define normalmente
       } else if (data.produtos && Array.isArray(data.produtos)) {
@@ -39,7 +40,7 @@ function Produtos() {
     } catch (error) {
       console.error('Erro ao buscar produtos:', error);
     }
-  };  
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -48,7 +49,7 @@ function Produtos() {
 
   const handleSave = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/products/${produtoEditando.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/products/${produtoEditando.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -69,7 +70,7 @@ function Produtos() {
 
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/products/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
         method: 'DELETE'
       });
 

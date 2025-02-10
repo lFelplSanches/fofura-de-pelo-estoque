@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_BASE_URL from '../config'; // ✅ Importação da URL da API
 
 function Movimentacoes() {
   const [produtos, setProdutos] = useState([]);
@@ -20,7 +21,7 @@ function Movimentacoes() {
           return;
         }
 
-        const response = await fetch('http://localhost:5000/api/products', {
+        const response = await fetch(`${API_BASE_URL}/api/products`, { // ✅ URL atualizada
           headers: {
             'Authorization': `Bearer ${token}`,  // ✅ Inclusão do token
           },
@@ -59,7 +60,7 @@ function Movimentacoes() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/movimentacoes', {
+      const response = await fetch(`${API_BASE_URL}/api/movimentacoes`, { // ✅ URL atualizada
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
