@@ -29,9 +29,14 @@ function AddProduct() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/products', {
+      const API_BASE_URL = "https://fofura-backend.onrender.com"; // URL do backend no Render
+
+      const response = await fetch(`${API_BASE_URL}/api/products`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}` // Adicionando token de autenticação
+        },
         body: JSON.stringify(formData)
       });
 
@@ -48,10 +53,12 @@ function AddProduct() {
           quantidade: ''
         });
       } else {
-        alert('Erro ao adicionar produto.');
+        const errorData = await response.json();
+        alert(`Erro ao adicionar produto: ${errorData.error || 'Erro desconhecido.'}`);
       }
     } catch (error) {
       console.error('Erro:', error);
+      alert('Erro de conexão com o servidor.');
     }
   };
 
@@ -63,7 +70,7 @@ function AddProduct() {
         <textarea name="descricao" placeholder="Descrição" value={formData.descricao} onChange={handleChange}></textarea>
         <input type="text" name="tipo" placeholder="Tipo" value={formData.tipo} onChange={handleChange} />
         <input type="text" name="categoria" placeholder="Categoria" value={formData.categoria} onChange={handleChange} />
-        
+
         <select name="especie" value={formData.especie} onChange={handleChange} required>
           <option value="">Selecione a Espécie</option>
           <option value="cachorro">Cachorro</option>

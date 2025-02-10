@@ -58,15 +58,25 @@ app.post('/api/login', async (req, res) => {
   const { email, senha } = req.body;
 
   try {
+    console.log(`Tentativa de login para o e-mail: ${email}`);
+
     const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
     const user = result.rows[0];
 
     if (!user) {
+      console.log('❌ Usuário não encontrado no banco de dados.');
       return res.status(401).json({ error: 'Usuário não encontrado' });
     }
 
+    console.log('✅ Usuário encontrado:', user);
+    console.log('🔑 Senha fornecida:', senha);
+    console.log('🔐 Hash da senha no banco:', user.senha);
+
     const passwordMatch = await bcrypt.compare(senha, user.senha);
+    console.log('🔍 Comparação da senha:', passwordMatch);
+
     if (!passwordMatch) {
+      console.log('❌ Senha incorreta.');
       return res.status(401).json({ error: 'Senha incorreta' });
     }
 
@@ -76,8 +86,10 @@ app.post('/api/login', async (req, res) => {
       { expiresIn: '1h' }
     );
 
+    console.log('✅ Login bem-sucedido. Token gerado:', token);
     res.json({ token });
   } catch (error) {
+    console.error('❌ Erro interno no login:', error);
     res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
   }
 });
