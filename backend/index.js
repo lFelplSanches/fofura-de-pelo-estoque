@@ -175,6 +175,29 @@ app.get('/api/movimentacoes', authenticateToken, async (req, res) => {
   }
 });
 
+// Adicionar um novo produto
+app.post('/api/products', authenticateToken, async (req, res) => {
+  try {
+    const { nome, descricao, tipo, categoria, especie, validade, preco, quantidade } = req.body;
+
+    // Verificação básica de campos obrigatórios
+    if (!nome || !preco || !especie) {
+      return res.status(400).json({ error: 'Nome, preço e espécie são obrigatórios.' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO produtos (nome, descricao, tipo, categoria, especie, validade, preco, quantidade, empresa_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [nome, descricao, tipo, categoria, especie, validade, preco, quantidade || 0, req.user.empresa_id]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao adicionar produto:', error);
+    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+  }
+});
+
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
