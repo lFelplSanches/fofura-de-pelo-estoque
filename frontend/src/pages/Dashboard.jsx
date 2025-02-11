@@ -19,7 +19,8 @@ function Dashboard() {
           return;
         }
 
-        const response = await fetch('http://localhost:5000/api/dashboard', {
+        const API_BASE_URL = "https://fofura-backend.onrender.com"; // URL do backend no Render
+        const response = await fetch(`${API_BASE_URL}/api/dashboard`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',

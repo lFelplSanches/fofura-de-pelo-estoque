@@ -101,12 +101,27 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
     const totalEstoque = await pool.query('SELECT COALESCE(SUM(quantidade), 0) AS total FROM produtos WHERE empresa_id = $1;', [req.user.empresa_id]);
     const valorTotal = await pool.query('SELECT COALESCE(SUM(preco * quantidade), 0) AS valor_total FROM produtos WHERE empresa_id = $1;', [req.user.empresa_id]);
 
+    const produtosPorCategoria = await pool.query(
+      'SELECT categoria, COUNT(*) AS quantidade FROM produtos WHERE empresa_id = $1 GROUP BY categoria;',
+      [req.user.empresa_id]
+    );
+
+    const vendasMensais = await pool.query(
+      `SELECT TO_CHAR(data_movimentacao, 'YYYY-MM') AS mes, SUM(valor_total) AS total_vendas
+       FROM movimentacoes WHERE tipo_movimentacao = 'venda' AND empresa_id = $1
+       GROUP BY mes ORDER BY mes;`,
+      [req.user.empresa_id]
+    );
+
     res.json({
       totalProdutos: parseInt(totalProdutos.rows[0].count, 10),
       totalEstoque: parseInt(totalEstoque.rows[0].total, 10),
-      valorTotal: parseFloat(valorTotal.rows[0].valor_total)
+      valorTotal: parseFloat(valorTotal.rows[0].valor_total),
+      produtosPorCategoria: produtosPorCategoria.rows,
+      vendasMensais: vendasMensais.rows,
     });
   } catch (error) {
+    console.error('Erro ao buscar estatísticas do dashboard:', error);
     res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
   }
 });
