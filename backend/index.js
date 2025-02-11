@@ -112,16 +112,16 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
     const valorTotal = await pool.query(`SELECT COALESCE(SUM(preco * quantidade), 0) AS valor_total FROM produtos ${condition};`, params);
 
     const produtosPorCategoria = await pool.query(
-      `SELECT categoria, COUNT(*) AS quantidade FROM produtos ${condition ? condition : ''} GROUP BY categoria;`,
+      `SELECT categoria, COUNT(*) AS quantidade FROM produtos ${condition} GROUP BY categoria;`,
       params
     );
 
+    // ✅ Correção: Ajuste da cláusula WHERE
     const vendasMensais = await pool.query(
       `SELECT TO_CHAR(data_movimentacao, 'YYYY-MM') AS mes, 
               COALESCE(SUM(valor_total), 0) AS total_vendas
        FROM movimentacoes
-       ${condition ? condition : ''}
-       AND tipo_movimentacao = 'venda'
+       ${condition ? `${condition} AND` : 'WHERE'} tipo_movimentacao = 'venda'
        GROUP BY mes
        ORDER BY mes;`,
       params
