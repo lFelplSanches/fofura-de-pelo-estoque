@@ -97,20 +97,29 @@ app.post('/api/login', async (req, res) => {
 // Dashboard com restrição por empresa
 app.get('/api/dashboard', authenticateToken, async (req, res) => {
   try {
-    const totalProdutos = await pool.query('SELECT COUNT(*) FROM produtos WHERE empresa_id = $1;', [req.user.empresa_id]);
-    const totalEstoque = await pool.query('SELECT COALESCE(SUM(quantidade), 0) AS total FROM produtos WHERE empresa_id = $1;', [req.user.empresa_id]);
-    const valorTotal = await pool.query('SELECT COALESCE(SUM(preco * quantidade), 0) AS valor_total FROM produtos WHERE empresa_id = $1;', [req.user.empresa_id]);
+    let params = [];
+    let condition = '';
+
+    if (req.user.role !== 'admin') {
+      condition = 'WHERE empresa_id = $1';
+      params = [req.user.empresa_id];
+    }
+
+    const totalProdutos = await pool.query(`SELECT COUNT(*) FROM produtos ${condition};`, params);
+    const totalEstoque = await pool.query(`SELECT COALESCE(SUM(quantidade), 0) AS total FROM produtos ${condition};`, params);
+    const valorTotal = await pool.query(`SELECT COALESCE(SUM(preco * quantidade), 0) AS valor_total FROM produtos ${condition};`, params);
 
     const produtosPorCategoria = await pool.query(
-      'SELECT categoria, COUNT(*) AS quantidade FROM produtos WHERE empresa_id = $1 GROUP BY categoria;',
-      [req.user.empresa_id]
+      `SELECT categoria, COUNT(*) AS quantidade FROM produtos ${condition} GROUP BY categoria;`,
+      params
     );
 
     const vendasMensais = await pool.query(
       `SELECT TO_CHAR(data_movimentacao, 'YYYY-MM') AS mes, SUM(valor_total) AS total_vendas
-       FROM movimentacoes WHERE tipo_movimentacao = 'venda' AND empresa_id = $1
+       FROM movimentacoes ${condition}
+       AND tipo_movimentacao = 'venda'
        GROUP BY mes ORDER BY mes;`,
-      [req.user.empresa_id]
+      params
     );
 
     res.json({
@@ -126,12 +135,23 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
   }
 });
 
-// Rota protegida para produtos
+// 📦 Rota protegida para produtos
 app.get('/api/products', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM produtos WHERE empresa_id = $1', [req.user.empresa_id]);
+    let query = 'SELECT * FROM produtos';
+    const params = [];
+
+    // 🚀 Se o usuário for 'petshop', mostra apenas os produtos da empresa dele
+    if (req.user.role === 'petshop') {
+      query += ' WHERE empresa_id = $1';
+      params.push(req.user.empresa_id);
+    }
+
+    // ✅ Para o 'admin', mostra todos os produtos sem filtro
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
+    console.error('Erro ao buscar produtos:', error);
     res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
   }
 });
@@ -210,7 +230,19 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
 // Consultar o histórico de movimentações
 app.get('/api/movimentacoes', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM movimentacoes WHERE empresa_id = $1 ORDER BY data_movimentacao DESC;', [req.user.empresa_id]);
+    let query;
+    const params = [];
+
+    if (req.user.role === 'admin') {
+      // ✅ Admin acessa todas as movimentações
+      query = 'SELECT * FROM movimentacoes ORDER BY data_movimentacao DESC';
+    } else {
+      // ✅ Petshop acessa apenas suas movimentações
+      query = 'SELECT * FROM movimentacoes WHERE empresa_id = $1 ORDER BY data_movimentacao DESC';
+      params.push(req.user.empresa_id);
+    }
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
