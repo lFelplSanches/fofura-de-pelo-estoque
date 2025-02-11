@@ -109,7 +109,12 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
     // ✅ Consultas para o Dashboard
     const totalProdutos = await pool.query(`SELECT COUNT(*) FROM produtos ${condition};`, params);
     const totalEstoque = await pool.query(`SELECT COALESCE(SUM(quantidade), 0) AS total FROM produtos ${condition};`, params);
-    const valorTotal = await pool.query(`SELECT COALESCE(SUM(preco * quantidade), 0) AS valor_total FROM produtos ${condition};`, params);
+    const valorTotal = await pool.query(`
+      SELECT COALESCE(SUM(preco * quantidade), 0) AS valor_total
+      FROM produtos
+      WHERE preco IS NOT NULL AND quantidade IS NOT NULL
+      ${condition ? `AND empresa_id = $1` : ''};
+    `, params);    
 
     const produtosPorCategoria = await pool.query(
       `SELECT categoria, COUNT(*) AS quantidade FROM produtos ${condition} GROUP BY categoria;`,
@@ -277,6 +282,20 @@ app.post('/api/products', authenticateToken, async (req, res) => {
   }
 });
 
+// Nova rota para obter informações do usuário autenticado
+app.get('/api/usuario', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT nome, email FROM usuarios WHERE id = $1', [req.user.id]);
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+  } catch (error) {
+    console.error('Erro ao buscar informações do usuário:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
