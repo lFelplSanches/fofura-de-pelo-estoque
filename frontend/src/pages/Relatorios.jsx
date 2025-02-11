@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import API_BASE_URL from '../config'; // ✅ Importação da URL base da API
+import API_BASE_URL from '../config';
 
 function Relatorios() {
   const [movimentacoes, setMovimentacoes] = useState([]);
 
   useEffect(() => {
     fetchMovimentacoes();
-  }, []);
+  }, []); // ✅ Correção: Removido o uso de uma variável inexistente
 
   const fetchMovimentacoes = async () => {
     try {
-      const token = localStorage.getItem('token'); // ✅ Correção: Recupera o token do localStorage
+      const token = localStorage.getItem('token');
       if (!token) {
         console.error('Token de autenticação não encontrado. Faça login novamente.');
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/movimentacoes`, { // ✅ Atualização da URL
+      const response = await fetch(`${API_BASE_URL}/api/movimentacoes`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -29,7 +29,7 @@ function Relatorios() {
 
       const data = await response.json();
 
-      const produtosResponse = await fetch(`${API_BASE_URL}/api/products`, { // ✅ Atualização da URL
+      const produtosResponse = await fetch(`${API_BASE_URL}/api/products`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -58,13 +58,13 @@ function Relatorios() {
 
   const handleDelete = async (id) => {
     try {
-      const token = localStorage.getItem('token'); // ✅ Correção: Recupera o token do localStorage
+      const token = localStorage.getItem('token');
       if (!token) {
         console.error('Token de autenticação não encontrado.');
         return;
       }
 
-      await fetch(`${API_BASE_URL}/api/movimentacoes/${id}`, { // ✅ Atualização da URL
+      const response = await fetch(`${API_BASE_URL}/api/movimentacoes/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -72,7 +72,12 @@ function Relatorios() {
         }
       });
 
-      fetchMovimentacoes();
+      if (response.ok) {
+        fetchMovimentacoes(); // ✅ Atualiza a lista após a exclusão
+      } else {
+        const errorData = await response.json();
+        console.error(`Erro ao excluir movimentação: ${errorData.error}`);
+      }
     } catch (error) {
       console.error('Erro ao excluir movimentação:', error);
     }

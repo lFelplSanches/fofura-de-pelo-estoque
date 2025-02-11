@@ -141,13 +141,40 @@ app.post('/api/movimentacoes', authenticateToken, async (req, res) => {
   try {
     const { produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida } = req.body;
 
+    // Obter o preço do produto
+    const produtoResult = await pool.query('SELECT preco, quantidade AS estoque_atual FROM produtos WHERE id = $1', [produto_id]);
+
+    if (produtoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
+    }
+
+    const { preco, estoque_atual } = produtoResult.rows[0];
+    let valor_total = 0;
+
+    // Verificar movimentação do tipo "venda"
+    if (tipo_movimentacao === 'venda') {
+      if (estoque_atual < quantidade) {
+        return res.status(400).json({ error: 'Estoque insuficiente para a venda.' });
+      }
+      valor_total = preco * quantidade;
+    }
+
+    // Registrar movimentação
     const result = await pool.query(
-      'INSERT INTO movimentacoes (produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida]
+      'INSERT INTO movimentacoes (produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida, valor_total, empresa_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [produto_id, tipo_movimentacao, quantidade, responsavel || 'Não informado', observacoes || '', tipo_saida || null, valor_total, req.user.empresa_id]
     );
+
+    // Atualizar o estoque após movimentação
+    const updateQuery = tipo_movimentacao === 'entrada' 
+      ? 'UPDATE produtos SET quantidade = quantidade + $1 WHERE id = $2'
+      : 'UPDATE produtos SET quantidade = quantidade - $1 WHERE id = $2';
+
+    await pool.query(updateQuery, [quantidade, produto_id]);
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
+    console.error('Erro ao registrar movimentação:', error);
     res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
   }
 });
