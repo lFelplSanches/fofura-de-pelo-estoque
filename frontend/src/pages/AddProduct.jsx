@@ -29,17 +29,24 @@ function AddProduct() {
     }
 
     try {
-      const API_BASE_URL = "https://fofura-backend.onrender.com"; // URL do backend no Render
+      const API_BASE_URL = "https://fofura-backend.onrender.com"; 
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        alert("Sessão expirada. Faça login novamente.");
+        return;
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/products`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` // Adicionando token de autenticação
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(formData)
       });
 
+      // ✅ Verificação aprimorada do status da resposta
       if (response.ok) {
         alert('Produto adicionado com sucesso!');
         setFormData({
@@ -53,11 +60,13 @@ function AddProduct() {
           quantidade: ''
         });
       } else {
-        const errorData = await response.json();
-        alert(`Erro ao adicionar produto: ${errorData.error || 'Erro desconhecido.'}`);
+        // Se não for JSON válido, captura o erro como texto
+        const errorData = await response.text();
+        console.error('Erro ao adicionar produto:', errorData);
+        alert(`Erro ao adicionar produto: ${errorData}`);
       }
     } catch (error) {
-      console.error('Erro:', error);
+      console.error('Erro de conexão:', error);
       alert('Erro de conexão com o servidor.');
     }
   };
