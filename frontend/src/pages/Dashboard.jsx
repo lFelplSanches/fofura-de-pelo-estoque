@@ -21,10 +21,11 @@ function Dashboard() {
 
         const API_BASE_URL = "https://fofura-backend.onrender.com"; // URL do backend no Render
         const response = await fetch(`${API_BASE_URL}/api/dashboard`, {
+          method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${token}`, // ✅ Verifica se o token está correto
             'Content-Type': 'application/json',
-          }
+          },
         });
 
         if (!response.ok) {

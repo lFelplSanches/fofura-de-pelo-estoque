@@ -101,32 +101,30 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
     let params = [];
 
     if (req.user.role !== 'admin') {
-      // ✅ Petshop: Condição para filtrar pela empresa
       condition = 'WHERE empresa_id = $1';
       params = [req.user.empresa_id];
     }
 
-    // ✅ Consultas para o Dashboard
     const totalProdutos = await pool.query(`SELECT COUNT(*) FROM produtos ${condition};`, params);
     const totalEstoque = await pool.query(`SELECT COALESCE(SUM(quantidade), 0) AS total FROM produtos ${condition};`, params);
+    
     const valorTotal = await pool.query(`
       SELECT COALESCE(SUM(preco * quantidade), 0) AS valor_total
       FROM produtos
-      WHERE preco IS NOT NULL AND quantidade IS NOT NULL
-      ${condition ? `AND empresa_id = $1` : ''};
-    `, params);    
+      ${req.user.role !== 'admin' ? 'WHERE empresa_id = $1' : ''};
+    `, params);
 
     const produtosPorCategoria = await pool.query(
       `SELECT categoria, COUNT(*) AS quantidade FROM produtos ${condition} GROUP BY categoria;`,
       params
     );
 
-    // ✅ Correção: Ajuste da cláusula WHERE
+    // ✅ Correção na cláusula WHERE e remoção da duplicação
     const vendasMensais = await pool.query(
       `SELECT TO_CHAR(data_movimentacao, 'YYYY-MM') AS mes, 
               COALESCE(SUM(valor_total), 0) AS total_vendas
        FROM movimentacoes
-       ${condition ? `${condition} AND` : 'WHERE'} tipo_movimentacao = 'venda'
+       ${req.user.role !== 'admin' ? 'WHERE empresa_id = $1 AND' : ''} tipo_movimentacao = 'venda'
        GROUP BY mes
        ORDER BY mes;`,
       params
