@@ -97,26 +97,38 @@ app.post('/api/login', async (req, res) => {
 // Dashboard com restrição por empresa
 app.get('/api/dashboard', authenticateToken, async (req, res) => {
   try {
-    let condition = req.user.role !== 'admin' ? 'WHERE empresa_id = $1' : '';
-    let params = req.user.role !== 'admin' ? [req.user.empresa_id] : [];
+    let condition = '';
+    let params = [];
+
+    if (req.user.role !== 'admin') {
+      condition = 'WHERE empresa_id = $1';
+      params = [req.user.empresa_id];
+    }
 
     const totalProdutos = await pool.query(`SELECT COUNT(*) FROM produtos ${condition};`, params);
     const totalEstoque = await pool.query(`SELECT COALESCE(SUM(quantidade), 0) AS total FROM produtos ${condition};`, params);
-    const valorTotal = await pool.query(`SELECT COALESCE(SUM(preco * quantidade), 0) AS valor_total FROM produtos ${condition};`, params);
+
+    const valorTotal = await pool.query(`
+      SELECT COALESCE(SUM(preco * quantidade), 0) AS valor_total
+      FROM produtos
+      ${req.user.role !== 'admin' ? 'WHERE empresa_id = $1' : ''};
+    `, params);
 
     const produtosPorCategoria = await pool.query(
       `SELECT categoria, COUNT(*) AS quantidade FROM produtos ${condition} GROUP BY categoria;`,
       params
     );
 
-    const vendasMensais = await pool.query(
-      `SELECT TO_CHAR(data_movimentacao, 'YYYY-MM') AS mes, COALESCE(SUM(valor_total), 0) AS total_vendas
-       FROM movimentacoes
-       ${condition ? `${condition} AND tipo_movimentacao = 'venda'` : `WHERE tipo_movimentacao = 'venda'`}
-       GROUP BY mes
-       ORDER BY mes;`,
-      params
-    );
+    const vendasMensaisQuery = `
+      SELECT TO_CHAR(data_movimentacao, 'YYYY-MM') AS mes, 
+             COALESCE(SUM(valor_total), 0) AS total_vendas
+      FROM movimentacoes
+      ${req.user.role !== 'admin' ? 'WHERE empresa_id = $1 AND tipo_movimentacao = \'venda\'' : 'WHERE tipo_movimentacao = \'venda\''}
+      GROUP BY mes
+      ORDER BY mes;
+    `;
+
+    const vendasMensais = await pool.query(vendasMensaisQuery, params);
 
     res.json({
       totalProdutos: parseInt(totalProdutos.rows[0].count, 10),
@@ -125,31 +137,12 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
       produtosPorCategoria: produtosPorCategoria.rows,
       vendasMensais: vendasMensais.rows,
     });
+
   } catch (error) {
+    console.error('Erro ao buscar estatísticas do dashboard:', error);
     res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
   }
 });
-
-    // ✅ Correção da lógica condicional para admin/petshop
-    const vendasMensaisQuery = `
-  SELECT TO_CHAR(data_movimentacao, 'YYYY-MM') AS mes, 
-         COALESCE(SUM(valor_total), 0) AS total_vendas
-  FROM movimentacoes
-  ${req.user.role !== 'admin' ? 'WHERE empresa_id = $1 AND tipo_movimentacao = \'venda\'' : 'WHERE tipo_movimentacao = \'venda\''}
-  GROUP BY mes
-  ORDER BY mes;
-`;
-
-const vendasMensais = await pool.query(vendasMensaisQuery, params);
-
-res.json({
-  totalProdutos: parseInt(totalProdutos.rows[0].count, 10),
-  totalEstoque: parseInt(totalEstoque.rows[0].total, 10),
-  valorTotal: parseFloat(valorTotal.rows[0].valor_total),
-  produtosPorCategoria: produtosPorCategoria.rows,
-  vendasMensais: vendasMensais.rows,
-});
-
 
 // 📦 Rota protegida para produtos
 app.get('/api/products', authenticateToken, async (req, res) => {
