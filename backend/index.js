@@ -107,12 +107,13 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
 
     const totalProdutos = await pool.query(`SELECT COUNT(*) FROM produtos ${condition};`, params);
     const totalEstoque = await pool.query(`SELECT COALESCE(SUM(quantidade), 0) AS total FROM produtos ${condition};`, params);
-
-    const valorTotal = await pool.query(`
+    
+    const valorTotalQuery = `
       SELECT COALESCE(SUM(preco * quantidade), 0) AS valor_total
       FROM produtos
       ${req.user.role !== 'admin' ? 'WHERE empresa_id = $1' : ''};
-    `, params);
+    `;
+    const valorTotal = await pool.query(valorTotalQuery, params);
 
     const produtosPorCategoria = await pool.query(
       `SELECT categoria, COUNT(*) AS quantidade FROM produtos ${condition} GROUP BY categoria;`,
