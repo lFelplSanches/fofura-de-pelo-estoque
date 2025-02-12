@@ -12,7 +12,7 @@ function Movimentacoes() {
     tipo_saida: '',
   });
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchProdutos = async () => {
       try {
         const token = localStorage.getItem('token');  // ✅ Verificação do token
@@ -42,18 +42,24 @@ function Movimentacoes() {
       if ('serviceWorker' in navigator && 'PushManager' in window) {
         try {
           const registration = await navigator.serviceWorker.register('/service-worker.js');
-  
-          const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: process.env.REACT_APP_VAPID_PUBLIC_KEY, // ✅ Substitua pela chave pública VAPID
-          });
-  
+
+          let subscription = await registration.pushManager.getSubscription();
+          if (!subscription) {
+            const VAPID_PUBLIC_KEY = 'BPBoEj2dWqS5X8ZFXONejTAEL7o9CPNO_EzJaGSjMuQs8KWhntkaKvbjYHhG98IJd62eHNoKAQl0hdJinpLS4ik';
+            const convertedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+
+            subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: convertedKey,
+            });
+          }
+
           await fetch(`${API_BASE_URL}/api/subscribe`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(subscription),
           });
-  
+
           console.log('✅ Inscrição concluída para notificações push!');
         } catch (error) {
           console.error('❌ Erro ao se inscrever para notificações push:', error);
@@ -63,6 +69,18 @@ function Movimentacoes() {
   
     subscribeToPush();
   }, []);  
+
+  const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -129,7 +147,7 @@ function Movimentacoes() {
             className="border p-2 w-full"
           >
             <option value="">Selecione um produto</option>
-            {Array.isArray(produtos) && produtos.map((produto) => (
+            {produtos.map((produto) => (
               <option key={produto.id} value={produto.id}>
                 {produto.nome}
               </option>
@@ -180,7 +198,7 @@ function Movimentacoes() {
             value={movimentacao.quantidade}
             onChange={handleChange}
             required
-            min="1"  // ✅ Validação mínima
+            min="1"
             className="border p-2 w-full"
           />
         </div>
