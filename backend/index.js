@@ -270,6 +270,26 @@ app.get('/api/movimentacoes', authenticateToken, async (req, res) => {
   }
 });
 
+// Excluir uma movimentação existente
+app.delete('/api/movimentacoes/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verifica se a movimentação existe antes de excluir
+    const result = await pool.query('DELETE FROM movimentacoes WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Movimentação não encontrada' });
+    }
+
+    res.json({ message: 'Movimentação excluída com sucesso' });
+  } catch (error) {
+    console.error('Erro ao excluir movimentação:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+
 // Adicionar um novo produto
 app.post('/api/products', authenticateToken, async (req, res) => {
   try {
