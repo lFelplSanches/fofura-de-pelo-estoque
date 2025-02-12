@@ -193,35 +193,60 @@ app.post('/api/movimentacoes', authenticateToken, async (req, res) => {
   try {
     const { produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida } = req.body;
 
-    const produtoResult = await pool.query('SELECT nome FROM produtos WHERE id = $1', [produto_id]);
+    // Obter o preço e a quantidade atual do produto
+    const produtoResult = await pool.query('SELECT preco, quantidade AS estoque_atual FROM produtos WHERE id = $1', [produto_id]);
 
     if (produtoResult.rows.length === 0) {
       return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
-    const produto = produtoResult.rows[0].nome;
+    const { preco, estoque_atual } = produtoResult.rows[0];
+    let valor_total = 0;
 
+    // Verificar o tipo de movimentação
+    if (tipo_movimentacao === 'venda' || tipo_movimentacao === 'saida') {
+      if (estoque_atual < quantidade) {
+        return res.status(400).json({ error: 'Estoque insuficiente para a movimentação.' });
+      }
+      valor_total = preco * quantidade;
+    } else if (tipo_movimentacao === 'entrada') {
+      valor_total = preco * quantidade; // Para entradas, o valor total também é registrado
+    }
+
+    // Registrar a movimentação
     const result = await pool.query(
-      'INSERT INTO movimentacoes (produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida]
+      'INSERT INTO movimentacoes (produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida, valor_total, empresa_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [produto_id, tipo_movimentacao, quantidade, responsavel || 'Não informado', observacoes || '', tipo_saida || null, valor_total, req.user.empresa_id]
     );
 
- // ✅ Envio de notificação após a movimentação
- const payload = JSON.stringify({
-  title: 'Movimentação de Estoque',
-  body: `Uma nova movimentação do tipo ${tipo_movimentacao} foi registrada para o produto ${produto}.`
-});
+    // Atualizar o estoque do produto
+    let updateQuery = '';
+    if (tipo_movimentacao === 'entrada') {
+      updateQuery = 'UPDATE produtos SET quantidade = quantidade + $1 WHERE id = $2';
+    } else if (tipo_movimentacao === 'saida' || tipo_movimentacao === 'venda') {
+      updateQuery = 'UPDATE produtos SET quantidade = quantidade - $1 WHERE id = $2';
+    }
 
-subscriptions.forEach(subscription => {
-  webpush.sendNotification(subscription, payload).catch(error => console.error(error));
-});
+    if (updateQuery) {
+      await pool.query(updateQuery, [quantidade, produto_id]);
+    }
 
-res.status(201).json(result.rows[0]);
+    res.status(201).json(result.rows[0]);
 
-} catch (error) {
-console.error('Erro ao registrar movimentação:', error);
-res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
-}
+    // Enviar notificação após a movimentação
+    const payload = JSON.stringify({
+      title: 'Movimentação de Estoque',
+      body: `Uma nova movimentação do tipo ${tipo_movimentacao} foi registrada.`
+    });
+
+    subscriptions.forEach(subscription => {
+      webpush.sendNotification(subscription, payload).catch(error => console.error(error));
+    });
+
+  } catch (error) {
+    console.error('Erro ao registrar movimentação:', error);
+    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+  }
 });
 
 // Atualizar um produto existente
