@@ -67,7 +67,7 @@ function Dashboard() {
         </div>
         <div className="bg-yellow-500 text-white p-4 rounded shadow">
           <h3 className="text-lg font-semibold">Valor Total</h3>
-          <p className="text-3xl">R$ {Number(stats.valorTotal).toFixed(2)}</p>
+          <p className="text-3xl">R$ {stats.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
         </div>
       </div>
 
