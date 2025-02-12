@@ -37,6 +37,33 @@ function Movimentacoes() {
     fetchProdutos();
   }, []);
 
+  useEffect(() => {
+    const subscribeToPush = async () => {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        try {
+          const registration = await navigator.serviceWorker.register('/service-worker.js');
+  
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: process.env.REACT_APP_VAPID_PUBLIC_KEY, // ✅ Substitua pela chave pública VAPID
+          });
+  
+          await fetch(`${API_BASE_URL}/api/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subscription),
+          });
+  
+          console.log('✅ Inscrição concluída para notificações push!');
+        } catch (error) {
+          console.error('❌ Erro ao se inscrever para notificações push:', error);
+        }
+      }
+    };
+  
+    subscribeToPush();
+  }, []);  
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setMovimentacao((prev) => ({

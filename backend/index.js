@@ -5,6 +5,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
+const webpush = require('web-push');
 require('dotenv').config();
 
 const app = express();
@@ -21,6 +22,13 @@ const pool = new Pool({
 
 const SECRET = process.env.JWT_SECRET;
 
+// Configuração do VAPID para notificações push
+webpush.setVapidDetails(
+  'mailto:admin@fofuradepelo.com',
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
+
 // Middleware de autenticação
 const authenticateToken = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
@@ -32,6 +40,16 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+// Rota para registrar assinaturas de notificação
+app.post('/api/subscribe', (req, res) => {
+  const subscription = req.body;
+  res.status(201).json({});
+
+  const payload = JSON.stringify({ title: 'Bem-vindo!', body: 'Agora você receberá notificações.' });
+
+  webpush.sendNotification(subscription, payload).catch(error => console.error(error));
+});
 
 // Registro de novos petshops (Apenas Admin)
 app.post('/api/register', authenticateToken, async (req, res) => {
@@ -175,42 +193,35 @@ app.post('/api/movimentacoes', authenticateToken, async (req, res) => {
   try {
     const { produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida } = req.body;
 
-    // Obter o preço do produto
-    const produtoResult = await pool.query('SELECT preco, quantidade AS estoque_atual FROM produtos WHERE id = $1', [produto_id]);
+    const produtoResult = await pool.query('SELECT nome FROM produtos WHERE id = $1', [produto_id]);
 
     if (produtoResult.rows.length === 0) {
       return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
-    const { preco, estoque_atual } = produtoResult.rows[0];
-    let valor_total = 0;
+    const produto = produtoResult.rows[0].nome;
 
-    // Verificar movimentação do tipo "venda"
-    if (tipo_movimentacao === 'venda') {
-      if (estoque_atual < quantidade) {
-        return res.status(400).json({ error: 'Estoque insuficiente para a venda.' });
-      }
-      valor_total = preco * quantidade;
-    }
-
-    // Registrar movimentação
     const result = await pool.query(
-      'INSERT INTO movimentacoes (produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida, valor_total, empresa_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [produto_id, tipo_movimentacao, quantidade, responsavel || 'Não informado', observacoes || '', tipo_saida || null, valor_total, req.user.empresa_id]
+      'INSERT INTO movimentacoes (produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida]
     );
 
-    // Atualizar o estoque após movimentação
-    const updateQuery = tipo_movimentacao === 'entrada' 
-      ? 'UPDATE produtos SET quantidade = quantidade + $1 WHERE id = $2'
-      : 'UPDATE produtos SET quantidade = quantidade - $1 WHERE id = $2';
+ // ✅ Envio de notificação após a movimentação
+ const payload = JSON.stringify({
+  title: 'Movimentação de Estoque',
+  body: `Uma nova movimentação do tipo ${tipo_movimentacao} foi registrada para o produto ${produto}.`
+});
 
-    await pool.query(updateQuery, [quantidade, produto_id]);
+subscriptions.forEach(subscription => {
+  webpush.sendNotification(subscription, payload).catch(error => console.error(error));
+});
 
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error('Erro ao registrar movimentação:', error);
-    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
-  }
+res.status(201).json(result.rows[0]);
+
+} catch (error) {
+console.error('Erro ao registrar movimentação:', error);
+res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+}
 });
 
 // Atualizar um produto existente
@@ -302,8 +313,8 @@ app.get('/api/usuario', authenticateToken, async (req, res) => {
 
 // Configuração do Web Push
 const VAPID_KEYS = {
-  publicKey: 'BPBoEj2dWqS5X8ZFXONejTAEL7o9CPNO_EzJaGSjMuQs8KWhntkaKvbjYHhG98IJd62eHNoKAQl0hdJinpLS4ik', // Cole sua chave pública gerada aqui
-  privateKey: 'SeoOcvcHK_QAILYKJhVHtz_dMGkmaR551mZwdYgFj_g' // Cole sua chave privada gerada aqui
+  publicKey: process.env.VAPID_PUBLIC_KEY,
+  privateKey: process.env.VAPID_PRIVATE_KEY,
 };
 
 webpush.setVapidDetails(
