@@ -58,12 +58,15 @@ function Relatorios() {
 
   const handleDelete = async (id) => {
     try {
+      const confirmDelete = window.confirm("Tem certeza que deseja excluir esta movimentação?");
+      if (!confirmDelete) return;
+  
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('Token de autenticação não encontrado.');
+        console.error('❌ Token de autenticação não encontrado.');
         return;
       }
-
+  
       const response = await fetch(`${API_BASE_URL}/api/movimentacoes/${id}`, {
         method: 'DELETE',
         headers: {
@@ -71,17 +74,30 @@ function Relatorios() {
           'Content-Type': 'application/json'
         }
       });
-
-      if (response.ok) {
-        fetchMovimentacoes(); // ✅ Atualiza a lista após a exclusão
-      } else {
-        const errorData = await response.json();
-        console.error(`Erro ao excluir movimentação: ${errorData.error}`);
+  
+      if (!response.ok) {
+        let errorMessage = `Erro ${response.status}: `;
+        try {
+          const errorData = await response.json();
+          errorMessage += errorData.error || "Erro desconhecido.";
+        } catch {
+          errorMessage += "Resposta inválida do servidor.";
+        }
+        console.error(errorMessage);
+        alert(errorMessage);
+        return;
       }
+  
+      console.log("✅ Movimentação excluída com sucesso!");
+      alert("Movimentação excluída com sucesso!");
+  
+      fetchMovimentacoes(); // ✅ Atualiza a lista após a exclusão
+  
     } catch (error) {
-      console.error('Erro ao excluir movimentação:', error);
+      console.error("❌ Erro ao excluir movimentação:", error);
+      alert("Erro ao excluir movimentação. Tente novamente.");
     }
-  };
+  };  
 
   return (
     <div className="p-4">
