@@ -41,33 +41,65 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Rota para registrar assinaturas de notificação
+// Armazenar assinaturas (idealmente em um banco de dados)
+let subscriptions = [];
+
 app.post('/api/subscribe', (req, res) => {
   const subscription = req.body;
-  res.status(201).json({});
-
-  const payload = JSON.stringify({ title: 'Bem-vindo!', body: 'Agora você receberá notificações.' });
-
-  webpush.sendNotification(subscription, payload).catch(error => console.error(error));
+  subscriptions.push(subscription);
+  res.status(201).json({ message: 'Assinatura salva com sucesso!' });
 });
 
-// Registro de novos petshops (Apenas Admin)
-app.post('/api/register', authenticateToken, async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Acesso negado' });
+// Função para enviar notificação
+const sendNotification = async (message) => {
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification(sub, JSON.stringify(message));
+    } catch (error) {
+      console.error('Erro ao enviar notificação:', error);
+    }
   }
+};
 
-  const { nome, email, senha, empresa_id } = req.body;
-  const hashedPassword = await bcrypt.hash(senha, 10);
-
+// Registrar movimentação de estoque
+app.post('/api/movimentacoes', authenticateToken, async (req, res) => {
   try {
+    const { produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida } = req.body;
+
+    const produtoResult = await pool.query('SELECT nome, preco, quantidade AS estoque_atual FROM produtos WHERE id = $1', [produto_id]);
+    if (produtoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
+    }
+
+    const { nome, preco, estoque_atual } = produtoResult.rows[0];
+    let valor_total = preco * quantidade;
+
+    if ((tipo_movimentacao === 'venda' || tipo_movimentacao === 'saida') && estoque_atual < quantidade) {
+      return res.status(400).json({ error: 'Estoque insuficiente para a movimentação.' });
+    }
+
     const result = await pool.query(
-      'INSERT INTO usuarios (nome, email, senha, role, empresa_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [nome, email, hashedPassword, 'petshop', empresa_id]
+      'INSERT INTO movimentacoes (produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida, valor_total, empresa_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [produto_id, tipo_movimentacao, quantidade, responsavel || 'Não informado', observacoes || '', tipo_saida || null, valor_total, req.user.empresa_id]
     );
+
+    const updateQuery = tipo_movimentacao === 'entrada'
+      ? 'UPDATE produtos SET quantidade = quantidade + $1 WHERE id = $2'
+      : 'UPDATE produtos SET quantidade = quantidade - $1 WHERE id = $2';
+
+    await pool.query(updateQuery, [quantidade, produto_id]);
+
     res.status(201).json(result.rows[0]);
+
+    // Enviar notificação
+    sendNotification({
+      title: '📦 Movimentação de Estoque',
+      body: `Produto: ${nome}\nMovimentação: ${tipo_movimentacao}\nQuantidade: ${quantidade}\nResponsável: ${responsavel || 'Não informado'}`,
+    });
+
   } catch (error) {
-    res.status(500).json({ error: 'Erro ao registrar usuário', details: error.message });
+    console.error('Erro ao registrar movimentação:', error);
+    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
   }
 });
 
@@ -188,63 +220,6 @@ app.get('/api/products', authenticateToken, async (req, res) => {
   }
 });
 
-// Registrar movimentação de estoque
-app.post('/api/movimentacoes', authenticateToken, async (req, res) => {
-  try {
-    const { produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida } = req.body;
-
-    // Obter o nome e o preço do produto
-    const produtoResult = await pool.query('SELECT nome, preco, quantidade AS estoque_atual FROM produtos WHERE id = $1', [produto_id]);
-
-    if (produtoResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Produto não encontrado.' });
-    }
-
-    const { nome, preco, estoque_atual } = produtoResult.rows[0];
-    let valor_total = 0;
-
-    if (tipo_movimentacao === 'venda' || tipo_movimentacao === 'saida') {
-      if (estoque_atual < quantidade) {
-        return res.status(400).json({ error: 'Estoque insuficiente para a movimentação.' });
-      }
-      valor_total = preco * quantidade;
-    } else if (tipo_movimentacao === 'entrada') {
-      valor_total = preco * quantidade;
-    }
-
-    // Registrar a movimentação
-    const result = await pool.query(
-      'INSERT INTO movimentacoes (produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida, valor_total, empresa_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [produto_id, tipo_movimentacao, quantidade, responsavel || 'Não informado', observacoes || '', tipo_saida || null, valor_total, req.user.empresa_id]
-    );
-
-    // Atualizar o estoque
-    const updateQuery = tipo_movimentacao === 'entrada'
-      ? 'UPDATE produtos SET quantidade = quantidade + $1 WHERE id = $2'
-      : 'UPDATE produtos SET quantidade = quantidade - $1 WHERE id = $2';
-
-    await pool.query(updateQuery, [quantidade, produto_id]);
-
-    res.status(201).json(result.rows[0]);
-
-    // Envio da notificação após o registro da movimentação
-    const payload = JSON.stringify({
-      title: '📦 Movimentação de Estoque',
-      body: `Produto: ${nome}\nMovimentação: ${tipo_movimentacao}\nQuantidade: ${quantidade}\nResponsável: ${responsavel || 'Não informado'}`,
-    });
-
-    subscriptions.forEach(subscription => {
-      webpush.sendNotification(subscription, payload)
-        .then(() => console.log('✅ Notificação enviada com sucesso!'))
-        .catch(error => console.error('❌ Erro ao enviar notificação:', error));
-    });
-
-  } catch (error) {
-    console.error('Erro ao registrar movimentação:', error);
-    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
-  }
-});
-
 // Atualizar um produto existente
 app.put('/api/products/:id', authenticateToken, async (req, res) => {
   try {
@@ -343,55 +318,6 @@ webpush.setVapidDetails(
   VAPID_KEYS.publicKey,
   VAPID_KEYS.privateKey
 );
-
-// Armazenar assinaturas (idealmente em um banco de dados)
-let subscriptions = [];
-
-app.post('/api/subscribe', (req, res) => {
-  const subscription = req.body;
-  subscriptions.push(subscription);
-  res.status(201).json({ message: 'Assinatura salva com sucesso!' });
-});
-
-// Função para enviar a notificação para todas as assinaturas salvas
-const sendNotification = (payload) => {
-  subscriptions.forEach(subscription => {
-    webpush.sendNotification(subscription, JSON.stringify(payload))
-      .catch(error => console.error('Erro ao enviar notificação:', error));
-  });
-};
-
-// Ajuste na rota de registro da movimentação
-app.post('/api/movimentacoes', authenticateToken, async (req, res) => {
-  try {
-    const { produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida } = req.body;
-
-    const produtoResult = await pool.query('SELECT nome FROM produtos WHERE id = $1', [produto_id]);
-    if (produtoResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Produto não encontrado.' });
-    }
-
-    const produto = produtoResult.rows[0].nome;
-
-    const result = await pool.query(
-      'INSERT INTO movimentacoes (produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida, empresa_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida, req.user.empresa_id]
-    );
-
-    // Enviar notificação após o registro da movimentação
-    const payload = {
-      title: 'Nova Movimentação de Estoque',
-      body: `Movimentação registrada: ${quantidade} unidade(s) do produto "${produto}" (${tipo_movimentacao}).`,
-    };
-
-    sendNotification(payload); // Chamada da função para enviar a notificação
-
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error('Erro ao registrar movimentação:', error);
-    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
-  }
-});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
