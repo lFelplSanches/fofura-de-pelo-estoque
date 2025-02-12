@@ -300,6 +300,64 @@ app.get('/api/usuario', authenticateToken, async (req, res) => {
   }
 });
 
+// Configuração do Web Push
+const VAPID_KEYS = {
+  publicKey: 'BPBoEj2dWqS5X8ZFXONejTAEL7o9CPNO_EzJaGSjMuQs8KWhntkaKvbjYHhG98IJd62eHNoKAQl0hdJinpLS4ik', // Cole sua chave pública gerada aqui
+  privateKey: 'SeoOcvcHK_QAILYKJhVHtz_dMGkmaR551mZwdYgFj_g' // Cole sua chave privada gerada aqui
+};
+
+webpush.setVapidDetails(
+  'mailto:admin@fofuradepelo.com', // Coloque seu email
+  VAPID_KEYS.publicKey,
+  VAPID_KEYS.privateKey
+);
+
+// Armazenar assinaturas (idealmente em um banco de dados)
+let subscriptions = [];
+
+app.post('/api/subscribe', (req, res) => {
+  const subscription = req.body;
+  subscriptions.push(subscription);
+  res.status(201).json({ message: 'Assinatura salva com sucesso!' });
+});
+
+const sendNotification = (payload) => {
+  subscriptions.forEach(sub => {
+    webpush.sendNotification(sub, JSON.stringify(payload)).catch(err => console.error(err));
+  });
+};
+
+// Exemplo de trigger de notificação após movimentação
+app.post('/api/movimentacoes', authenticateToken, async (req, res) => {
+  try {
+    const { produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida } = req.body;
+
+    const produtoResult = await pool.query('SELECT nome FROM produtos WHERE id = $1', [produto_id]);
+
+    if (produtoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Produto não encontrado.' });
+    }
+
+    const produto = produtoResult.rows[0].nome;
+
+    const result = await pool.query(
+      'INSERT INTO movimentacoes (produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida]
+    );
+
+    // Enviar notificação
+    sendNotification({
+      title: 'Nova Movimentação de Estoque',
+      body: `Movimentação de ${quantidade} unidade(s) do produto ${produto}.`
+    });
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao registrar movimentação:', error);
+    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
