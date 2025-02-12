@@ -193,24 +193,23 @@ app.post('/api/movimentacoes', authenticateToken, async (req, res) => {
   try {
     const { produto_id, tipo_movimentacao, quantidade, responsavel, observacoes, tipo_saida } = req.body;
 
-    // Obter o preço e a quantidade atual do produto
-    const produtoResult = await pool.query('SELECT preco, quantidade AS estoque_atual FROM produtos WHERE id = $1', [produto_id]);
+    // Obter o nome e o preço do produto
+    const produtoResult = await pool.query('SELECT nome, preco, quantidade AS estoque_atual FROM produtos WHERE id = $1', [produto_id]);
 
     if (produtoResult.rows.length === 0) {
       return res.status(404).json({ error: 'Produto não encontrado.' });
     }
 
-    const { preco, estoque_atual } = produtoResult.rows[0];
+    const { nome, preco, estoque_atual } = produtoResult.rows[0];
     let valor_total = 0;
 
-    // Verificar o tipo de movimentação
     if (tipo_movimentacao === 'venda' || tipo_movimentacao === 'saida') {
       if (estoque_atual < quantidade) {
         return res.status(400).json({ error: 'Estoque insuficiente para a movimentação.' });
       }
       valor_total = preco * quantidade;
     } else if (tipo_movimentacao === 'entrada') {
-      valor_total = preco * quantidade; // Para entradas, o valor total também é registrado
+      valor_total = preco * quantidade;
     }
 
     // Registrar a movimentação
@@ -219,28 +218,25 @@ app.post('/api/movimentacoes', authenticateToken, async (req, res) => {
       [produto_id, tipo_movimentacao, quantidade, responsavel || 'Não informado', observacoes || '', tipo_saida || null, valor_total, req.user.empresa_id]
     );
 
-    // Atualizar o estoque do produto
-    let updateQuery = '';
-    if (tipo_movimentacao === 'entrada') {
-      updateQuery = 'UPDATE produtos SET quantidade = quantidade + $1 WHERE id = $2';
-    } else if (tipo_movimentacao === 'saida' || tipo_movimentacao === 'venda') {
-      updateQuery = 'UPDATE produtos SET quantidade = quantidade - $1 WHERE id = $2';
-    }
+    // Atualizar o estoque
+    const updateQuery = tipo_movimentacao === 'entrada'
+      ? 'UPDATE produtos SET quantidade = quantidade + $1 WHERE id = $2'
+      : 'UPDATE produtos SET quantidade = quantidade - $1 WHERE id = $2';
 
-    if (updateQuery) {
-      await pool.query(updateQuery, [quantidade, produto_id]);
-    }
+    await pool.query(updateQuery, [quantidade, produto_id]);
 
     res.status(201).json(result.rows[0]);
 
-    // Enviar notificação após a movimentação
+    // Envio da notificação após o registro da movimentação
     const payload = JSON.stringify({
-      title: 'Movimentação de Estoque',
-      body: `Uma nova movimentação do tipo ${tipo_movimentacao} foi registrada.`
+      title: '📦 Movimentação de Estoque',
+      body: `Produto: ${nome}\nMovimentação: ${tipo_movimentacao}\nQuantidade: ${quantidade}\nResponsável: ${responsavel || 'Não informado'}`,
     });
 
     subscriptions.forEach(subscription => {
-      webpush.sendNotification(subscription, payload).catch(error => console.error(error));
+      webpush.sendNotification(subscription, payload)
+        .then(() => console.log('✅ Notificação enviada com sucesso!'))
+        .catch(error => console.error('❌ Erro ao enviar notificação:', error));
     });
 
   } catch (error) {
