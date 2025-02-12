@@ -42,24 +42,24 @@ function Movimentacoes() {
       if ('serviceWorker' in navigator && 'PushManager' in window) {
         try {
           const registration = await navigator.serviceWorker.register('/service-worker.js');
-
+  
           let subscription = await registration.pushManager.getSubscription();
           if (!subscription) {
             const VAPID_PUBLIC_KEY = 'BPBoEj2dWqS5X8ZFXONejTAEL7o9CPNO_EzJaGSjMuQs8KWhntkaKvbjYHhG98IJd62eHNoKAQl0hdJinpLS4ik';
             const convertedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-
+  
             subscription = await registration.pushManager.subscribe({
               userVisibleOnly: true,
               applicationServerKey: convertedKey,
             });
           }
-
+  
           await fetch(`${API_BASE_URL}/api/subscribe`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(subscription),
           });
-
+  
           console.log('✅ Inscrição concluída para notificações push!');
         } catch (error) {
           console.error('❌ Erro ao se inscrever para notificações push:', error);
@@ -68,7 +68,7 @@ function Movimentacoes() {
     };
   
     subscribeToPush();
-  }, []);  
+  }, []);    
 
   const urlBase64ToUint8Array = (base64String) => {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);

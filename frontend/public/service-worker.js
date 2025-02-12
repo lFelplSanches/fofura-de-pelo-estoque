@@ -1,6 +1,7 @@
-self.addEventListener('push', event => {
-  const data = event.data ? event.data.json() : { title: 'Notificação', body: 'Você tem uma nova atualização!' };
-
+self.addEventListener('push', function(event) {
+  const data = event.data.json();
+  console.log('📢 Notificação recebida:', data);
+  
   const options = {
     body: data.body,
     icon: '/icon.png', // Opcional: ícone da notificação
