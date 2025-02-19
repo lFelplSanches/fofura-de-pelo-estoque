@@ -70,19 +70,31 @@ function Produtos() {
 
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
-        method: 'DELETE'
-      });
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.error('Token de autenticação não encontrado.');
+            return;
+        }
 
-      if (response.ok) {
-        fetchProdutos();
-      } else {
-        console.error('Erro ao deletar o produto');
-      }
+        const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,  // ✅ Inclusão do token
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            console.log('✅ Produto excluído com sucesso!');
+            fetchProdutos(); // Atualiza a lista após a exclusão
+        } else {
+            const errorData = await response.json();
+            console.error(`Erro ao excluir produto: ${errorData.error}`);
+        }
     } catch (error) {
-      console.error('Erro ao deletar o produto:', error);
+        console.error('Erro ao excluir produto:', error);
     }
-  };
+};
 
   return (
     <div className="p-4">
