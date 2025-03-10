@@ -32,11 +32,19 @@ webpush.setVapidDetails(
 // Middleware de autenticação
 const authenticateToken = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Token não fornecido' });
+
+  if (!token) {
+    console.log('🚨 Token não fornecido!');
+    return res.status(401).json({ error: 'Token não fornecido' });
+  }
 
   jwt.verify(token, SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Token inválido' });
+    if (err) {
+      console.log('🚨 Token inválido ou expirado!');
+      return res.status(403).json({ error: 'Token inválido' });
+    }
     req.user = user;
+    console.log('✅ Token validado com sucesso!');
     next();
   });
 };
