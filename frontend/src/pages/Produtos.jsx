@@ -49,24 +49,37 @@ function Produtos() {
 
   const handleSave = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products/${produtoEditando.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(produtoEditando)
-      });
+        const token = localStorage.getItem('token'); // 🔍 Recupera o token do localStorage
+        if (!token) {
+            console.error('❌ Token de autenticação não encontrado.');
+            alert('Sua sessão expirou. Faça login novamente.');
+            return;
+        }
 
-      if (response.ok) {
-        fetchProdutos();
-        setProdutoEditando(null);
-      } else {
-        console.error('Erro ao atualizar o produto');
-      }
+        console.log(`🔍 Enviando requisição com Token: ${token}`); // Log para depuração
+
+        const response = await fetch(`${API_BASE_URL}/api/products/${produtoEditando.id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`, // ✅ Inclui o token corretamente
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(produtoEditando)
+        });
+
+        if (response.ok) {
+            console.log('✅ Produto atualizado com sucesso!');
+            fetchProdutos();
+            setProdutoEditando(null);
+        } else {
+            const errorData = await response.json();
+            console.error(`❌ Erro ao atualizar o produto: ${errorData.error}`);
+            alert(`Erro ao atualizar: ${errorData.error}`);
+        }
     } catch (error) {
-      console.error('Erro ao atualizar o produto:', error);
+        console.error('❌ Erro ao atualizar o produto:', error);
     }
-  };
+};
 
   const handleDelete = async (id) => {
     try {
