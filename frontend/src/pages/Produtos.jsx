@@ -76,17 +76,19 @@ function Produtos() {
             return;
         }
 
+        console.log(`🔍 Tentando excluir o produto com ID: ${id}`);
+
         const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${token}`,  // ✅ Inclusão do token
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });
 
         if (response.ok) {
             console.log('✅ Produto excluído com sucesso!');
-            fetchProdutos(); // Atualiza a lista após a exclusão
+            fetchProdutos();
         } else {
             const errorData = await response.json();
             console.error(`Erro ao excluir produto: ${errorData.error}`);
