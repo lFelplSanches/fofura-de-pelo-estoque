@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import Intro from "./pages/Intro";
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Produtos from './pages/Produtos';
 import Relatorios from './pages/Relatorios';
@@ -7,7 +9,6 @@ import Configuracoes from './pages/Configuracoes';
 import Usuario from './pages/Usuario';
 import AddProduct from './pages/AddProduct';
 import Movimentacoes from './pages/Movimentacoes';
-import Login from './pages/Login';
 import EditAccount from './components/EditAccount';
 import ChangePassword from './components/ChangePassword';
 import UserMenu from './components/UserMenu';
@@ -61,7 +62,7 @@ function App() {
         <aside className="w-64 bg-gray-800 text-white p-4">
           <h1 className="text-2xl font-bold text-center mb-6">Fofura de Pelo</h1>
           <nav className="flex flex-col gap-4">
-            <NavLink to="/" className={({ isActive }) => isActive ? 'bg-gray-700 p-2 rounded text-white' : 'hover:bg-gray-700 p-2 rounded'}>Dashboard</NavLink>
+            <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'bg-gray-700 p-2 rounded text-white' : 'hover:bg-gray-700 p-2 rounded'}>Dashboard</NavLink>
             <NavLink to="/produtos" className={({ isActive }) => isActive ? 'bg-gray-700 p-2 rounded text-white' : 'hover:bg-gray-700 p-2 rounded'}>Produtos</NavLink>
             <NavLink to="/relatorios" className={({ isActive }) => isActive ? 'bg-gray-700 p-2 rounded text-white' : 'hover:bg-gray-700 p-2 rounded'}>Relatórios</NavLink>
             <NavLink to="/configuracoes" className={({ isActive }) => isActive ? 'bg-gray-700 p-2 rounded text-white' : 'hover:bg-gray-700 p-2 rounded'}>Configurações</NavLink>
@@ -74,7 +75,7 @@ function App() {
 
         <main className="flex-1 p-6 overflow-auto">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Intro />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/produtos" element={<Produtos />} />
             <Route path="/relatorios" element={<Relatorios />} />
