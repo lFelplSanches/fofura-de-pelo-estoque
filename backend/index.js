@@ -250,7 +250,11 @@ app.put('/api/products/:id', authenticateToken, upload.single('imagem'), async (
   try {
       const { id } = req.params;
       const { nome, descricao, tipo, categoria, validade, preco, quantidade } = req.body;
-      const imagem = req.file ? `/uploads/${req.file.filename}` : req.body.imagem;
+      const imagem = req.file ? `/uploads/${req.file.filename}` : req.body.imagem; // Mantém a imagem antiga se não houver upload
+
+      if (!nome || !preco) {
+          return res.status(400).json({ error: "Nome e preço são obrigatórios." });
+      }
 
       const result = await pool.query(
           'UPDATE produtos SET nome = $1, descricao = $2, tipo = $3, categoria = $4, validade = $5, preco = $6, quantidade = $7, imagem = $8 WHERE id = $9 RETURNING *',
