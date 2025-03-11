@@ -293,6 +293,46 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Duplicar produtos
+app.post('/api/products/duplicate/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Buscar o produto original no banco de dados
+    const result = await pool.query('SELECT * FROM produtos WHERE id = $1', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+
+    const produto = result.rows[0];
+
+    // Criar um novo produto com os mesmos dados (exceto o ID)
+    const novoProduto = await pool.query(
+      `INSERT INTO produtos (nome, descricao, tipo, categoria, especie, validade, preco, quantidade, imagem, empresa_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [
+        produto.nome + ' (Cópia)', // Nome diferente para evitar conflito
+        produto.descricao,
+        produto.tipo,
+        produto.categoria,
+        produto.especie,
+        produto.validade,
+        produto.preco,
+        produto.quantidade,
+        produto.imagem,
+        req.user.empresa_id
+      ]
+    );
+
+    res.status(201).json(novoProduto.rows[0]);
+
+  } catch (error) {
+    console.error('Erro ao duplicar produto:', error);
+    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+  }
+});
+
 // Consultar o histórico de movimentações
 app.get('/api/movimentacoes', authenticateToken, async (req, res) => {
   try {
