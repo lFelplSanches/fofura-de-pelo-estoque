@@ -250,7 +250,17 @@ app.put('/api/products/:id', authenticateToken, upload.single('imagem'), async (
   try {
       const { id } = req.params;
       const { nome, descricao, tipo, categoria, validade, preco, quantidade } = req.body;
-      const imagem = req.file ? `/uploads/${req.file.filename}` : req.body.imagem; // Mantém a imagem antiga se não houver upload
+      
+      // Verifica se uma nova imagem foi enviada
+      let imagem = req.file ? `/uploads/${req.file.filename}` : null;
+
+      // Se nenhuma imagem nova for enviada, mantém a imagem antiga do produto
+      if (!imagem) {
+          const produtoAtual = await pool.query('SELECT imagem FROM produtos WHERE id = $1', [id]);
+          if (produtoAtual.rows.length > 0) {
+              imagem = produtoAtual.rows[0].imagem;
+          }
+      }
 
       if (!nome || !preco) {
           return res.status(400).json({ error: "Nome e preço são obrigatórios." });
