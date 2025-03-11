@@ -24,6 +24,21 @@ const pool = new Pool({
 
 const SECRET = process.env.JWT_SECRET;
 
+// Configuração do armazenamento das imagens
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+      cb(null, 'uploads/'); // Salva as imagens na pasta 'uploads'
+  },
+  filename: (req, file, cb) => {
+      cb(null, Date.now() + path.extname(file.originalname)); // Nome único para o arquivo
+  }
+});
+
+const upload = multer({ storage: storage });
+
+// Servir arquivos estáticos (para acessar imagens no frontend)
+app.use('/uploads', express.static('uploads'));
+
 // Configuração do VAPID para notificações push
 webpush.setVapidDetails(
   'mailto:admin@fofuradepelo.com',
@@ -369,19 +384,6 @@ webpush.setVapidDetails(
   VAPID_KEYS.publicKey,
   VAPID_KEYS.privateKey
 );
-
-// Configuração do armazenamento das imagens
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-      cb(null, 'uploads/'); // Salva as imagens na pasta 'uploads'
-  },
-  filename: (req, file, cb) => {
-      cb(null, Date.now() + path.extname(file.originalname)); // Renomeia o arquivo
-  }
-});
-
-// Servir arquivos estáticos (para acessar imagens no frontend)
-app.use('/uploads', express.static('uploads'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
