@@ -171,14 +171,14 @@ const handleDuplicate = async (id) => {
                 className="bg-blue-500 text-white px-3 py-1 rounded"
                 onClick={() => setProdutoEditando(produto)}
               >
+                Editar
+                </button>
                 <button
                 className="bg-yellow-500 text-white px-3 py-1 rounded"
                 onClick={() => handleDuplicate(produto.id)}
                 >
                   Duplicar
                   </button>
-                Editar
-              </button>
               <button
                 className="bg-red-500 text-white px-3 py-1 rounded"
                 onClick={() => handleDelete(produto.id)}
