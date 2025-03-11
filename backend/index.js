@@ -9,6 +9,8 @@ const webpush = require('web-push');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 require('dotenv').config();
 
 const app = express();
@@ -25,27 +27,24 @@ const pool = new Pool({
 
 const SECRET = process.env.JWT_SECRET;
 
-// Criar a pasta "uploads/" se não existir
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log("📁 Pasta 'uploads/' criada automaticamente.");
-}
+// 📌 Configuração do Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-// Configuração do armazenamento das imagens
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-      cb(null, 'uploads/'); // Salva as imagens na pasta 'uploads'
-  },
-  filename: (req, file, cb) => {
-      cb(null, Date.now() + path.extname(file.originalname)); // Nome único para o arquivo
+// 📌 Configuração do Multer para usar o Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+      folder: "fofura_de_pelo", // Nome da pasta no Cloudinary
+      format: async (req, file) => 'png', // Salva as imagens em PNG
+      public_id: (req, file) => Date.now() + '-' + file.originalname.replace(/\s/g, "_") // Nome do arquivo
   }
 });
 
 const upload = multer({ storage: storage });
-
-// Servir arquivos estáticos (para acessar imagens no frontend)
-app.use('/uploads', express.static('uploads'));
 
 // Configuração do VAPID para notificações push
 webpush.setVapidDetails(
@@ -258,20 +257,15 @@ app.put('/api/products/:id', authenticateToken, upload.single('imagem'), async (
   try {
       const { id } = req.params;
       const { nome, descricao, tipo, categoria, validade, preco, quantidade } = req.body;
-      
-      // Verifica se uma nova imagem foi enviada
-      let imagem = req.file ? `/uploads/${req.file.filename}` : null;
 
-      // Se nenhuma imagem nova for enviada, mantém a imagem antiga do produto
+      let imagem = req.file ? req.file.path : null; // URL da nova imagem no Cloudinary
+
+      // Se nenhuma imagem nova for enviada, mantém a imagem atual do produto
       if (!imagem) {
           const produtoAtual = await pool.query('SELECT imagem FROM produtos WHERE id = $1', [id]);
           if (produtoAtual.rows.length > 0) {
               imagem = produtoAtual.rows[0].imagem;
           }
-      }
-
-      if (!nome || !preco) {
-          return res.status(400).json({ error: "Nome e preço são obrigatórios." });
       }
 
       const result = await pool.query(
@@ -401,7 +395,7 @@ app.delete('/api/movimentacoes/:id', authenticateToken, async (req, res) => {
 app.post('/api/products', authenticateToken, upload.single('imagem'), async (req, res) => {
   try {
     const { nome, descricao, tipo, categoria, especie, validade, preco, quantidade } = req.body;
-    const imagem = req.file ? `/uploads/${req.file.filename}` : null;
+    const imagem = req.file ? req.file.path : null; // URL do Cloudinary
 
     // Verificação básica de campos obrigatórios
     if (!nome || !preco || !especie) {
