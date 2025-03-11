@@ -8,6 +8,8 @@ const { Pool } = require('pg');
 const webpush = require('web-push');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -23,6 +25,13 @@ const pool = new Pool({
 });
 
 const SECRET = process.env.JWT_SECRET;
+
+// Criar a pasta "uploads/" se não existir
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log("📁 Pasta 'uploads/' criada automaticamente.");
+}
 
 // Configuração do armazenamento das imagens
 const storage = multer.diskStorage({
