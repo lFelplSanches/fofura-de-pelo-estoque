@@ -202,28 +202,28 @@ return (
                       <p><strong>Quantidade:</strong> {produto.quantidade}</p>
 
                       {/* Imagem Principal */}
-                      {imagens.length > 0 && (
-    <img
-        src={imagens[0].startsWith("http") ? imagens[0] : `${API_BASE_URL}${imagens[0]}`}
-        alt={produto.nome}
-        className="w-full h-40 object-cover mt-3 rounded cursor-pointer hover:scale-105 transition-transform"
-        onClick={() => abrirModal(imagens)}
-    />
-)}
+                      {produto.imagem && (
+                        <img
+                        src={produto.imagem} // Usa a URL direta do banco (Cloudinary)
+                        alt={produto.nome}
+                        className="w-full h-40 object-cover mt-3 rounded cursor-pointer hover:scale-105 transition-transform"
+                        onClick={() => abrirModal([produto.imagem])}
+                        />
+                        )}
 
                       {/* Miniaturas */}
                       {imagens.length > 1 && (
-                          <div className="flex mt-2 space-x-2">
-                              {imagens.map((img, index) => (
-                                  <img
-                                      key={index}
-                                      src={`${API_BASE_URL}${img}`}
-                                      alt={`${produto.nome} ${index + 1}`}
-                                      className="w-12 h-12 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500"
-                                      onClick={() => abrirModal(imagens, index)}
-                                  />
-                              ))}
-                          </div>
+                       <div className="flex mt-2 space-x-2">
+                       {imagens.map((img, index) => (
+                       <img
+                       key={index}
+                       src={img} // Usa diretamente a URL salva no banco
+                       alt={`${produto.nome} ${index + 1}`}
+                       className="w-12 h-12 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500"
+                       onClick={() => abrirModal(imagens, index)}
+                       />
+                      ))}
+                      </div>
                       )}
 
                       <div className="flex gap-2 mt-3">
