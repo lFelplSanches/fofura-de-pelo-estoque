@@ -47,9 +47,11 @@ function Produtos() {
 
 // 📌 Abre o modal e exibe a imagem ampliada
 const abrirModal = (imagens, index = 0) => {
+  if (!Array.isArray(imagens) || imagens.length === 0) return;
+  const imagemCorrigida = imagens[index].startsWith("http") ? imagens[index] : `${API_BASE_URL}${imagens[index]}`;
   setImagensProduto(imagens);
   setImagemAtualIndex(index);
-  setImagemSelecionada(imagens[index]);
+  setImagemSelecionada(imagemCorrigida);
 };
 
 // 📌 Fecha o modal
@@ -272,8 +274,8 @@ return (
                           ⬅
                       </button>
                   )}
-
-                  <img src={`${API_BASE_URL}${imagemSelecionada}`} alt="Produto" className="max-w-screen-md max-h-screen-md rounded-lg shadow-lg" />
+                  
+                  <img src={imagemSelecionada} alt="Produto" className="max-w-screen-md max-h-screen-md rounded-lg shadow-lg" />
 
                   {/* Botão de Próximo */}
                   {imagensProduto.length > 1 && (
