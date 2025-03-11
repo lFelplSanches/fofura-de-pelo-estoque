@@ -226,11 +226,29 @@ return (
                       </div>
                       )}
 
-                      <div className="flex gap-2 mt-3">
-                          <button className="bg-blue-500 text-white px-3 py-1 rounded">Editar</button>
-                          <button className="bg-yellow-500 text-white px-3 py-1 rounded">Duplicar</button>
-                          <button className="bg-red-500 text-white px-3 py-1 rounded">Excluir</button>
-                      </div>
+<div className="flex gap-2 mt-3">
+    <button 
+        className="bg-blue-500 text-white px-3 py-1 rounded"
+        onClick={() => setProdutoEditando(produto)} // 🛠️ Chama a função de edição
+    >
+        Editar
+    </button>
+    
+    <button 
+        className="bg-yellow-500 text-white px-3 py-1 rounded"
+        onClick={() => handleDuplicate(produto.id)} // 🛠️ Chama a função de duplicação
+    >
+        Duplicar
+    </button>
+    
+    <button 
+        className="bg-red-500 text-white px-3 py-1 rounded"
+        onClick={() => handleDelete(produto.id)} // 🛠️ Chama a função de exclusão
+    >
+        Excluir
+    </button>
+</div>
+
                   </div>
               );
           })}
