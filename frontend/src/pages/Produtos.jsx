@@ -64,8 +64,12 @@ function Produtos() {
         formData.append('validade', produtoEditando.validade);
         formData.append('preco', produtoEditando.preco);
         formData.append('quantidade', produtoEditando.quantidade);
+
+        // Adiciona a imagem somente se for um novo arquivo
         if (produtoEditando.imagem instanceof File) {
             formData.append('imagem', produtoEditando.imagem);
+        } else {
+            formData.append('imagem', produtoEditando.imagem || "");
         }
 
         const response = await fetch(`${API_BASE_URL}/api/products/${produtoEditando.id}`, {
