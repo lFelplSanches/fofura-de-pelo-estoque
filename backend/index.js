@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const webpush = require('web-push');
+const multer = require('multer');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -318,9 +320,10 @@ app.delete('/api/movimentacoes/:id', authenticateToken, async (req, res) => {
 
 
 // Adicionar um novo produto
-app.post('/api/products', authenticateToken, async (req, res) => {
+app.post('/api/products', authenticateToken, upload.single('imagem'), async (req, res) => {
   try {
     const { nome, descricao, tipo, categoria, especie, validade, preco, quantidade } = req.body;
+    const imagem = req.file ? `/uploads/${req.file.filename}` : null;
 
     // Verificação básica de campos obrigatórios
     if (!nome || !preco || !especie) {
@@ -328,9 +331,9 @@ app.post('/api/products', authenticateToken, async (req, res) => {
     }
 
     const result = await pool.query(
-      'INSERT INTO produtos (nome, descricao, tipo, categoria, especie, validade, preco, quantidade, empresa_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [nome, descricao, tipo, categoria, especie, validade, preco, quantidade || 0, req.user.empresa_id]
-    );
+      'INSERT INTO produtos (nome, descricao, tipo, categoria, especie, validade, preco, quantidade, imagem, empresa_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [nome, descricao, tipo, categoria, especie, validade, preco, quantidade || 0, imagem, req.user.empresa_id]
+  );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -365,6 +368,19 @@ webpush.setVapidDetails(
   VAPID_KEYS.publicKey,
   VAPID_KEYS.privateKey
 );
+
+// Configuração do armazenamento das imagens
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+      cb(null, 'uploads/'); // Salva as imagens na pasta 'uploads'
+  },
+  filename: (req, file, cb) => {
+      cb(null, Date.now() + path.extname(file.originalname)); // Renomeia o arquivo
+  }
+});
+
+// Servir arquivos estáticos (para acessar imagens no frontend)
+app.use('/uploads', express.static('uploads'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
