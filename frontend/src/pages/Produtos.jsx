@@ -4,6 +4,9 @@ import API_BASE_URL from '../config';
 function Produtos() {
   const [produtos, setProdutos] = useState([]);
   const [produtoEditando, setProdutoEditando] = useState(null);
+  const [imagemSelecionada, setImagemSelecionada] = useState(null);
+  const [imagensProduto, setImagensProduto] = useState([]);
+  const [imagemAtualIndex, setImagemAtualIndex] = useState(0);
   const [novoProduto, setNovoProduto] = useState({
     nome: '',
     descricao: '',
@@ -42,6 +45,33 @@ function Produtos() {
     }
   };
 
+// 📌 Abre o modal e exibe a imagem ampliada
+const abrirModal = (imagens, index = 0) => {
+  setImagensProduto(imagens);
+  setImagemAtualIndex(index);
+  setImagemSelecionada(imagens[index]);
+};
+
+// 📌 Fecha o modal
+const fecharModal = () => {
+  setImagemSelecionada(null);
+  setImagensProduto([]);
+};
+
+// 📌 Navega para a imagem anterior no modal
+const imagemAnterior = () => {
+  const novoIndex = (imagemAtualIndex - 1 + imagensProduto.length) % imagensProduto.length;
+  setImagemAtualIndex(novoIndex);
+  setImagemSelecionada(imagensProduto[novoIndex]);
+};
+
+// 📌 Navega para a próxima imagem no modal
+const proximaImagem = () => {
+  const novoIndex = (imagemAtualIndex + 1) % imagensProduto.length;
+  setImagemAtualIndex(novoIndex);
+  setImagemSelecionada(imagensProduto[novoIndex]);
+};
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNovoProduto({ ...novoProduto, [name]: value });
@@ -66,9 +96,9 @@ function Produtos() {
         formData.append('quantidade', produtoEditando.quantidade);
 
         // Adiciona a imagem SOMENTE se for um novo arquivo
-        if (produtoEditando.imagem instanceof File) {
-            formData.append('imagem', produtoEditando.imagem);
-        }
+        if (produtoEditando.imagem && produtoEditando.imagem instanceof File) {
+          formData.append('imagem', produtoEditando.imagem);
+      }      
 
         const response = await fetch(`${API_BASE_URL}/api/products/${produtoEditando.id}`, {
             method: 'PUT',
@@ -153,44 +183,92 @@ const handleDuplicate = async (id) => {
   }
 };
 
-  return (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Produtos</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {produtos.map((produto) => (
-          <div key={produto.id} className="border p-4 rounded shadow bg-white">
-            <h3 className="text-xl font-semibold">{produto.nome}{produto.imagem && <img src={`${API_BASE_URL}${produto.imagem}`} alt={produto.nome} className="w-full h-32 object-cover mb-2 rounded" />}
-            </h3>
-            <p><strong>Descrição:</strong> {produto.descricao}</p>
-            <p><strong>Tipo:</strong> {produto.tipo}</p>
-            <p><strong>Categoria:</strong> {produto.categoria}</p>
-            <p><strong>Espécie:</strong> {produto.especie}</p>
-            <p><strong>Validade:</strong> {produto.validade}</p>
-            <p><strong>Preço:</strong> R$ {Number(produto.preco).toFixed(2)}</p>
-            <p><strong>Quantidade:</strong> {produto.quantidade}</p>
-            <div className="flex gap-2 mt-2">
-              <button
-                className="bg-blue-500 text-white px-3 py-1 rounded"
-                onClick={() => setProdutoEditando(produto)}
-              >
-                Editar
-                </button>
-                <button
-                className="bg-yellow-500 text-white px-3 py-1 rounded"
-                onClick={() => handleDuplicate(produto.id)}
-                >
-                  Duplicar
-                  </button>
-              <button
-                className="bg-red-500 text-white px-3 py-1 rounded"
-                onClick={() => handleDelete(produto.id)}
-              >
-                Excluir
-              </button>
-            </div>
-          </div>
-        ))}
+return (
+  <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Produtos</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {produtos.map((produto) => {
+              const imagens = produto.imagem ? produto.imagem.split(",").filter(img => img.trim() !== "") : [];
+
+              return (
+                  <div key={produto.id} className="bg-white shadow-lg rounded-lg p-4">
+                      <h2 className="text-xl font-bold">{produto.nome}</h2>
+                      <p><strong>Descrição:</strong> {produto.descricao}</p>
+                      <p><strong>Tipo:</strong> {produto.tipo}</p>
+                      <p><strong>Categoria:</strong> {produto.categoria}</p>
+                      <p><strong>Espécie:</strong> {produto.especie}</p>
+                      <p><strong>Validade:</strong> {produto.validade}</p>
+                      <p><strong>Preço:</strong> R$ {produto.preco}</p>
+                      <p><strong>Quantidade:</strong> {produto.quantidade}</p>
+
+                      {/* Imagem Principal */}
+                      {imagens.length > 0 && (
+    <img
+        src={imagens[0].startsWith("http") ? imagens[0] : `${API_BASE_URL}${imagens[0]}`}
+        alt={produto.nome}
+        className="w-full h-40 object-cover mt-3 rounded cursor-pointer hover:scale-105 transition-transform"
+        onClick={() => abrirModal(imagens)}
+    />
+)}
+
+                      {/* Miniaturas */}
+                      {imagens.length > 1 && (
+                          <div className="flex mt-2 space-x-2">
+                              {imagens.map((img, index) => (
+                                  <img
+                                      key={index}
+                                      src={`${API_BASE_URL}${img}`}
+                                      alt={`${produto.nome} ${index + 1}`}
+                                      className="w-12 h-12 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500"
+                                      onClick={() => abrirModal(imagens, index)}
+                                  />
+                              ))}
+                          </div>
+                      )}
+
+                      <div className="flex gap-2 mt-3">
+                          <button className="bg-blue-500 text-white px-3 py-1 rounded">Editar</button>
+                          <button className="bg-yellow-500 text-white px-3 py-1 rounded">Duplicar</button>
+                          <button className="bg-red-500 text-white px-3 py-1 rounded">Excluir</button>
+                      </div>
+                  </div>
+              );
+          })}
       </div>
+
+      {/* Modal de Imagem Ampliada */}
+      {imagemSelecionada && (
+          <div
+              className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-80 flex justify-center items-center z-50"
+              onClick={fecharModal}
+          >
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <button className="absolute top-2 right-2 text-white text-xl" onClick={fecharModal}>✖</button>
+                  
+                  {/* Botão de Anterior */}
+                  {imagensProduto.length > 1 && (
+                      <button
+                          className="absolute left-2 top-1/2 text-white text-3xl bg-gray-800 p-2 rounded-full"
+                          onClick={imagemAnterior}
+                      >
+                          ⬅
+                      </button>
+                  )}
+
+                  <img src={`${API_BASE_URL}${imagemSelecionada}`} alt="Produto" className="max-w-screen-md max-h-screen-md rounded-lg shadow-lg" />
+
+                  {/* Botão de Próximo */}
+                  {imagensProduto.length > 1 && (
+                      <button
+                          className="absolute right-2 top-1/2 text-white text-3xl bg-gray-800 p-2 rounded-full"
+                          onClick={proximaImagem}
+                      >
+                          ➡
+                      </button>
+                  )}
+              </div>
+          </div>
+          )}
 
       {produtoEditando && (
         <div className="mt-4 p-4 bg-gray-100 rounded shadow">
