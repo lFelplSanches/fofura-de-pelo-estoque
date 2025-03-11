@@ -120,6 +120,37 @@ function Produtos() {
     }
 };
 
+//Duplicar produtos
+const handleDuplicate = async (id) => {
+  try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+          console.error('❌ Token de autenticação não encontrado.');
+          alert('Sua sessão expirou. Faça login novamente.');
+          return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/products/duplicate/${id}`, {
+          method: 'POST',
+          headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+          }
+      });
+
+      if (response.ok) {
+          console.log('✅ Produto duplicado com sucesso!');
+          fetchProdutos(); // Atualiza a lista de produtos
+      } else {
+          const errorData = await response.json();
+          console.error(`❌ Erro ao duplicar o produto: ${errorData.error}`);
+          alert(`Erro ao duplicar: ${errorData.error}`);
+      }
+  } catch (error) {
+      console.error('❌ Erro ao duplicar o produto:', error);
+  }
+};
+
   return (
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-4">Produtos</h2>
@@ -140,6 +171,12 @@ function Produtos() {
                 className="bg-blue-500 text-white px-3 py-1 rounded"
                 onClick={() => setProdutoEditando(produto)}
               >
+                <button
+                className="bg-yellow-500 text-white px-3 py-1 rounded"
+                onClick={() => handleDuplicate(produto.id)}
+                >
+                  Duplicar
+                  </button>
                 Editar
               </button>
               <button
