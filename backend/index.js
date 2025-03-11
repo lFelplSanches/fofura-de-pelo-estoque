@@ -231,20 +231,21 @@ app.get('/api/products', authenticateToken, async (req, res) => {
 });
 
 // Atualizar um produto existente
-app.put('/api/products/:id', authenticateToken, async (req, res) => {
+app.put('/api/products/:id', authenticateToken, upload.single('imagem'), async (req, res) => {
   try {
-    const { id } = req.params;
-    const { nome, descricao, tipo, categoria, validade, preco, quantidade } = req.body;
+      const { id } = req.params;
+      const { nome, descricao, tipo, categoria, validade, preco, quantidade } = req.body;
+      const imagem = req.file ? `/uploads/${req.file.filename}` : req.body.imagem;
 
-    const result = await pool.query(
-      'UPDATE produtos SET nome = $1, descricao = $2, tipo = $3, categoria = $4, validade = $5, preco = $6, quantidade = $7 WHERE id = $8 RETURNING *',
-      [nome, descricao, tipo, categoria, validade, preco, quantidade, id]
-    );
+      const result = await pool.query(
+          'UPDATE produtos SET nome = $1, descricao = $2, tipo = $3, categoria = $4, validade = $5, preco = $6, quantidade = $7, imagem = $8 WHERE id = $9 RETURNING *',
+          [nome, descricao, tipo, categoria, validade, preco, quantidade, imagem, id]
+      );
 
-    res.json(result.rows[0]);
+      res.json(result.rows[0]);
   } catch (error) {
-    console.error('Erro ao atualizar o produto:', error);
-    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+      console.error('Erro ao atualizar produto:', error);
+      res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
   }
 });
 
