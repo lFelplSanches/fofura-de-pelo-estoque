@@ -162,6 +162,30 @@ function Produtos() {
             placeholder="Descrição"
             className="border p-2 w-full rounded mb-2"
           />
+           <input
+            type="text"
+            name="tipo"
+            value={produtoEditando.tipo}
+            onChange={(e) => setProdutoEditando({ ...produtoEditando, tipo: e.target.value })}
+            placeholder="Tipo"
+            className="border p-2 w-full rounded mb-2"
+          />
+          <input
+           type="text"
+           name="categoria"
+           value={produtoEditando.categoria}
+           onChange={(e) => setProdutoEditando({ ...produtoEditando, categoria: e.target.value })}
+           placeholder="Categoria"
+           className="border p-2 w-full rounded mb-2"
+          />
+          <input
+           type="date"
+           name="validade"
+           value={produtoEditando.validade}
+           onChange={(e) => setProdutoEditando({ ...produtoEditando, validade: e.target.value })}
+           placeholder="Validade"
+           className="border p-2 w-full rounded mb-2"
+          />          
           <input
             type="text"
             name="preco"
@@ -169,6 +193,14 @@ function Produtos() {
             onChange={(e) => setProdutoEditando({ ...produtoEditando, preco: e.target.value })}
             placeholder="Preço"
             className="border p-2 w-full rounded mb-2"
+          />
+          <input
+           type="number"
+           name="quantidade"
+           value={produtoEditando.quantidade}
+           onChange={(e) => setProdutoEditando({ ...produtoEditando, quantidade: e.target.value })}
+           placeholder="Quantidade"
+           className="border p-2 w-full rounded mb-2"
           />
           <button
             className="bg-green-500 text-white px-4 py-2 rounded"
