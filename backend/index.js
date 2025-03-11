@@ -232,15 +232,16 @@ app.get('/api/products', authenticateToken, async (req, res) => {
 app.put('/api/products/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, descricao, preco, quantidade } = req.body;
+    const { nome, descricao, tipo, categoria, validade, preco, quantidade } = req.body;
 
     const result = await pool.query(
-      'UPDATE produtos SET nome = $1, descricao = $2, preco = $3, quantidade = $4 WHERE id = $5 RETURNING *',
-      [nome, descricao, preco, quantidade, id]
+      'UPDATE produtos SET nome = $1, descricao = $2, tipo = $3, categoria = $4, validade = $5, preco = $6, quantidade = $7 WHERE id = $8 RETURNING *',
+      [nome, descricao, tipo, categoria, validade, preco, quantidade, id]
     );
 
     res.json(result.rows[0]);
   } catch (error) {
+    console.error('Erro ao atualizar o produto:', error);
     res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
   }
 });
