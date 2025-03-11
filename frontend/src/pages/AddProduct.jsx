@@ -24,52 +24,62 @@ function AddProduct() {
     e.preventDefault();
 
     if (!formData.especie) {
-      alert("Por favor, selecione a espécie.");
-      return;
+        alert("Por favor, selecione a espécie.");
+        return;
     }
 
     try {
-      const API_BASE_URL = "https://fofura-backend.onrender.com"; 
-      const token = localStorage.getItem('token');
+        const API_BASE_URL = "https://fofura-backend.onrender.com";
+        const token = localStorage.getItem('token');
 
-      if (!token) {
-        alert("Sessão expirada. Faça login novamente.");
-        return;
-      }
+        if (!token) {
+            alert("Sessão expirada. Faça login novamente.");
+            return;
+        }
 
-      const response = await fetch(`${API_BASE_URL}/api/products`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
+        const formDataUpload = new FormData();
+        formDataUpload.append('nome', formData.nome);
+        formDataUpload.append('descricao', formData.descricao);
+        formDataUpload.append('tipo', formData.tipo);
+        formDataUpload.append('categoria', formData.categoria);
+        formDataUpload.append('especie', formData.especie);
+        formDataUpload.append('validade', formData.validade);
+        formDataUpload.append('preco', formData.preco);
+        formDataUpload.append('quantidade', formData.quantidade);
+        if (formData.imagem) {
+            formDataUpload.append('imagem', formData.imagem);
+        }
 
-      // ✅ Verificação aprimorada do status da resposta
-      if (response.ok) {
-        alert('Produto adicionado com sucesso!');
-        setFormData({
-          nome: '',
-          descricao: '',
-          tipo: '',
-          categoria: '',
-          especie: '', 
-          validade: '',
-          preco: '',
-          quantidade: ''
+        const response = await fetch(`${API_BASE_URL}/api/products`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formDataUpload
         });
-      } else {
-        // Se não for JSON válido, captura o erro como texto
-        const errorData = await response.text();
-        console.error('Erro ao adicionar produto:', errorData);
-        alert(`Erro ao adicionar produto: ${errorData}`);
-      }
+
+        if (response.ok) {
+            alert('Produto adicionado com sucesso!');
+            setFormData({
+                nome: '',
+                descricao: '',
+                tipo: '',
+                categoria: '',
+                especie: '',
+                validade: '',
+                preco: '',
+                quantidade: ''
+            });
+        } else {
+            const errorData = await response.text();
+            console.error('Erro ao adicionar produto:', errorData);
+            alert(`Erro ao adicionar produto: ${errorData}`);
+        }
     } catch (error) {
-      console.error('Erro de conexão:', error);
-      alert('Erro de conexão com o servidor.');
+        console.error('Erro de conexão:', error);
+        alert('Erro de conexão com o servidor.');
     }
-  };
+};
 
   return (
     <div className="p-4">
@@ -89,6 +99,14 @@ function AddProduct() {
         <input type="date" name="validade" value={formData.validade} onChange={handleChange} />
         <input type="number" name="preco" placeholder="Preço" value={formData.preco} onChange={handleChange} required />
         <input type="number" name="quantidade" placeholder="Quantidade" value={formData.quantidade} onChange={handleChange} />
+
+        <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => setFormData({ ...formData, imagem: e.target.files[0] })}
+        className="border p-2 w-full rounded mb-2"
+        />
+
 
         <button type="submit" className="bg-blue-500 text-white p-2 rounded">Adicionar Produto</button>
       </form>

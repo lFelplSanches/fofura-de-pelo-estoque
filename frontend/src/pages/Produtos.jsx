@@ -49,22 +49,31 @@ function Produtos() {
 
   const handleSave = async () => {
     try {
-        const token = localStorage.getItem('token'); // 🔍 Recupera o token do localStorage
+        const token = localStorage.getItem('token');
         if (!token) {
             console.error('❌ Token de autenticação não encontrado.');
             alert('Sua sessão expirou. Faça login novamente.');
             return;
         }
 
-        console.log(`🔍 Enviando requisição com Token: ${token}`); // Log para depuração
+        const formData = new FormData();
+        formData.append('nome', produtoEditando.nome);
+        formData.append('descricao', produtoEditando.descricao);
+        formData.append('tipo', produtoEditando.tipo);
+        formData.append('categoria', produtoEditando.categoria);
+        formData.append('validade', produtoEditando.validade);
+        formData.append('preco', produtoEditando.preco);
+        formData.append('quantidade', produtoEditando.quantidade);
+        if (produtoEditando.imagem instanceof File) {
+            formData.append('imagem', produtoEditando.imagem);
+        }
 
         const response = await fetch(`${API_BASE_URL}/api/products/${produtoEditando.id}`, {
             method: 'PUT',
             headers: {
-                'Authorization': `Bearer ${token}`, // ✅ Inclui o token corretamente
-                'Content-Type': 'application/json'
+                'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(produtoEditando)
+            body: formData
         });
 
         if (response.ok) {
@@ -117,7 +126,8 @@ function Produtos() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {produtos.map((produto) => (
           <div key={produto.id} className="border p-4 rounded shadow bg-white">
-            <h3 className="text-xl font-semibold">{produto.nome}</h3>
+            <h3 className="text-xl font-semibold">{produto.nome}{produto.imagem && <img src={`${API_BASE_URL}${produto.imagem}`} alt={produto.nome} className="w-full h-32 object-cover mb-2 rounded" />}
+            </h3>
             <p><strong>Descrição:</strong> {produto.descricao}</p>
             <p><strong>Tipo:</strong> {produto.tipo}</p>
             <p><strong>Categoria:</strong> {produto.categoria}</p>
@@ -202,6 +212,12 @@ function Produtos() {
            placeholder="Quantidade"
            className="border p-2 w-full rounded mb-2"
           />
+          <input
+           type="file"
+           accept="image/*"
+           onChange={(e) => setProdutoEditando({ ...produtoEditando, imagem: e.target.files[0] })}
+           className="border p-2 w-full rounded mb-2"
+           />
           <button
             className="bg-green-500 text-white px-4 py-2 rounded"
             onClick={handleSave}
