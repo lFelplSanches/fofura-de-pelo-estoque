@@ -2,7 +2,7 @@
 
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt'); // atualizado para bcrypt puro
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const webpush = require('web-push');
@@ -138,41 +138,39 @@ app.post('/api/movimentacoes', authenticateToken, async (req, res) => {
 // Login
 app.post('/api/login', async (req, res) => {
   const { email, senha } = req.body;
-
   try {
-    console.log(`Tentativa de login para o e-mail: ${email}`);
-
     const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-    const user = result.rows[0];
-
-    if (!user) {
-      console.log('❌ Usuário não encontrado no banco de dados.');
-      return res.status(401).json({ error: 'Usuário não encontrado' });
+    if (result.rows.length === 0) {
+      return res.status(401).json({ mensagem: 'Usuário não encontrado' });
     }
 
-    console.log('✅ Usuário encontrado:', user);
-    console.log('🔑 Senha fornecida:', senha);
-    console.log('🔐 Hash da senha no banco:', user.senha);
-
-    const passwordMatch = await bcrypt.compare(senha, user.senha);
-    console.log('🔍 Comparação da senha:', passwordMatch);
+    const user = result.rows[0];
+    const passwordMatch = await bcrypt.compare(senha.trim(), user.senha);
 
     if (!passwordMatch) {
-      console.log('❌ Senha incorreta.');
-      return res.status(401).json({ error: 'Senha incorreta' });
+      return res.status(401).json({ mensagem: 'Senha incorreta' });
     }
 
     const token = jwt.sign(
       { id: user.id, role: user.role, empresa_id: user.empresa_id },
-      SECRET,
-      { expiresIn: '1h' }
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
     );
 
-    console.log('✅ Login bem-sucedido. Token gerado:', token);
-    res.json({ token });
-  } catch (error) {
-    console.error('❌ Erro interno no login:', error);
-    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    res.status(200).json({
+      mensagem: 'Login bem-sucedido',
+      token,
+      usuario: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        role: user.role,
+        empresa_id: user.empresa_id
+      }
+    });
+  } catch (erro) {
+    console.error('Erro interno no login:', erro);
+    res.status(500).json({ mensagem: 'Erro interno no servidor' });
   }
 });
 
