@@ -144,7 +144,13 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ mensagem: 'Usuário não encontrado' });
     }
     const user = result.rows[0];
-    const passwordMatch = await bcrypt.compare(senha.trim(), user.senha);
+    console.log('🔑 Tentativa de login');
+console.log('📧 Email recebido:', email);
+console.log('🔐 Hash no banco:', user.senha);
+console.log('🧪 Senha digitada:', senha.trim());
+
+const passwordMatch = await bcrypt.compare(senha.trim(), user.senha);
+console.log('✅ Resultado da comparação:', passwordMatch);
     if (!passwordMatch) {
       return res.status(401).json({ mensagem: 'Senha incorreta' });
     }
