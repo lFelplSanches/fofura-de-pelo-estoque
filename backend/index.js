@@ -2,7 +2,7 @@
 
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcrypt'); // atualizado para bcrypt puro
+const bcrypt = require('bcryptjs'); // atualizado para bcrypt puro
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const webpush = require('web-push');
@@ -143,20 +143,16 @@ app.post('/api/login', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(401).json({ mensagem: 'Usuário não encontrado' });
     }
-
     const user = result.rows[0];
     const passwordMatch = await bcrypt.compare(senha.trim(), user.senha);
-
     if (!passwordMatch) {
       return res.status(401).json({ mensagem: 'Senha incorreta' });
     }
-
     const token = jwt.sign(
       { id: user.id, role: user.role, empresa_id: user.empresa_id },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
-
     res.status(200).json({
       mensagem: 'Login bem-sucedido',
       token,
