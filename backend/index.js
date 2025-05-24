@@ -176,6 +176,14 @@ console.log('✅ Resultado da comparação:', passwordMatch);
   }
 });
 
+// 🚧 Rota temporária para gerar hash com bcryptjs (remova após uso)
+app.get('/api/hash', async (req, res) => {
+  const senha = 'admin123';
+  const hash = await bcrypt.hash(senha, 10);
+  console.log('🔐 Hash gerado via /api/hash:', hash);
+  res.send({ senha, hash });
+});
+
 // Dashboard com restrição por empresa
 app.get('/api/dashboard', authenticateToken, async (req, res) => {
   try {
